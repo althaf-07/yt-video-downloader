@@ -1,4 +1,6 @@
+# Buildozer
+.buildozer/
+bin/
+
 # Virtual Environment
 .venv/
-.buildozer/
-
