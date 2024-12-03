@@ -1,0 +1,1 @@
+This is a very basic Youtube Video and Playlist Downloader android app made for my personal use case. This is built using Kivy and Buildozer. This use `pytubefix` to download videos. I am thinking of making this a website and use `yt-dlp` instead of `pytubefix`.
