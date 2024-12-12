@@ -1,0 +1,76 @@
+import os
+import platform
+from yt_dlp import YoutubeDL
+
+def main():
+    chdir() # Change directory to the appropriate location
+    resolutions = ['144', '240', '360', '480', '720', '1080', '1440', '2160']
+    int_resolutions = [int(resolution) for resolution in resolutions]
+
+    # Accept and validate user inputs
+    try:
+        url = input("Enter the video or playlist URL: ").strip()
+        resolution = input(f"Choose a resolutions {int_resolutions} (default: 360): ") or '360'
+        while resolution not in resolutions:
+            resolution = input(f"Error: Invalid resolution. Choose from {int_resolutions}: ")
+
+        fps = input("FPS [30 or 60] (default: 30): ") or '30'
+        while fps not in ['30', '60']:
+            fps = input("Error: Invalid option. Choose either 30 or 60: ")
+
+    except KeyboardInterrupt:
+        print("\nOperation cancelled by user.")
+        exit()
+
+    # Convert to integer after validation
+    resolution = int(resolution)
+    fps = int(fps)
+
+    # Determine whether the link is a video or a playlist and build options
+    ydl_opts = build_ydl_opts(url, resolution, fps)
+
+    try:
+        with YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+def build_ydl_opts(url, resolution, fps):
+    if 'playlist' in url:
+        outtmpl = "yt/%(playlist)s/%(playlist_index)s - %(title)s.%(ext)s"
+    else:
+        outtmpl = "yt/%(title)s.%(ext)s"
+
+    format_1 = f"bestvideo[ext='mp4'][height<={resolution}][fps<={fps}][protocol=https]+bestaudio[ext=m4a]"
+    format_2 = f"bestvideo[ext='mp4'][height<={resolution}][fps<={fps}][protocol=m3u8]+bestaudio[ext=m4a]"
+    format_3 = f"best"
+
+    # Build options
+    ydl_opts = {
+        'format': f"{format_1}/{format_2}/{format_3}",
+        'merge_output_format': 'mp4',
+        'outtmpl': outtmpl,
+        'ignoreerrors': True,  # Skip videos with errors
+        }
+
+    return ydl_opts
+
+def chdir():
+    home_dir = os.path.expanduser("~")
+    try:
+        if home_dir == '/data/data/com.termux/files/home':
+            download_dir = "/storage/emulated/0/Download"
+        elif platform.system().lower() == 'linux':
+            download_dir = f"{home_dir}/Downloads"
+        else:
+            raise OSError(f"Unsupported platform: {platform.system()}")
+    except Exception as e:
+        print(f"Error changing directory: {e}")
+        exit()
+
+    os.makedirs(download_dir, exist_ok=True)
+    os.chdir(download_dir)
+    print(f"Changed directory to {download_dir}")
+
+if __name__ == "__main__":
+    main()
