@@ -1,91 +1,114 @@
 #!/usr/bin/env python3
-import os
-import platform
+from pathlib import Path
+from urllib.parse import urlparse
 from yt_dlp import YoutubeDL
 
 def main():
-    chdir() # Change directory to the appropriate location
-    resolutions = ['144', '240', '360', '480', '720', '1080', '1440', '2160']
-    int_resolutions = [int(resolution) for resolution in resolutions]
-
-    # Accept and validate user inputs
     try:
-        url = input("Enter the video or playlist URL: ").strip()
+        # Get and validate user inputs
+        url = get_valid_url()
+        resolution = get_valid_resolution()
+        fps = get_valid_fps()
 
-        resolution = input(f"Choose a resolution {int_resolutions} (default: 360): ") or '360'
-        while resolution not in resolutions:
-            resolution = input(f"Error: Invalid resolution. Choose from {int_resolutions}: ")
+        # Determine whether the link is a video or a playlist and build options
+        ydl_opts = build_ydl_opts(url, resolution, fps)
 
-        fps = input("Select an FPS [30 or 60] (default: 30): ") or '30'
-        while fps not in ['30', '60']:
-            fps = input("Error: Invalid option. Choose either 30 or 60: ")
+        # Download using yt-dlp
+        with YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
 
     except KeyboardInterrupt:
         print("\nOperation cancelled by user.")
-        exit()
-
-    # Convert to integer after validation
-    resolution = int(resolution)
-    fps = int(fps)
-
-    # Determine whether the link is a video or a playlist and build options
-    ydl_opts = build_ydl_opts(url, resolution, fps)
-
-    try:
-        with YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
     except Exception as e:
         print(f"An error occurred: {e}")
 
+def get_valid_url():
+    url = input("Enter a video or playlist URL: ").strip()
+    while not is_youtube_link(url):
+        url = input("Error: Invalid URL. Provide a valid URL: ").strip()
+    return url
+
+def is_youtube_link(url):
+    parsed_url = urlparse(url)
+    return parsed_url.netloc in ["www.youtube.com", "youtube.com", "youtu.be"]
+
+def get_valid_resolution():
+    resolutions = ['144', '240', '360', '480', '720', '1080', '1440', '2160']
+    resolution = input(f"Select a resolution from {resolutions} (default: 360): ") or '360'
+    while resolution not in resolutions:
+        resolution = input(f"Error: Invalid resolution. Select from {resolutions} (default: 360): ") or '360'
+    return int(resolution)
+
+def get_valid_fps():
+    multiple_fps = ['15', '30', '60']
+    fps = input(f"Select an FPS from {multiple_fps} (default: 30): ") or '30'
+    while fps not in multiple_fps:
+        fps = input(f"Error: Invalid FPS. Select from {multiple_fps} (default: 30): ") or '30'
+    return int(fps)
+
 def build_ydl_opts(url, resolution, fps):
+    download_dir = get_download_dir()
+
     if 'playlist' in url:
-        try:
-            numbering = input(f"Do you want numbering for playlist? (y/N): ") or 'N'
-            while numbering not in ['y', 'n', 'N']:
-                input(f"Error: Invalid option. Choose either 'y' or 'n': ")
+        numbering = get_valid_numbering()
 
-        except KeyboardInterrupt:
-            print("\nOperation cancelled by user.")
-            exit()
-
-        numbering = numbering.lower()
-        if numbering.lower() == 'y':
-            outtmpl = "%(playlist)s/%(playlist_index)s - %(title)s.%(ext)s"
+        if numbering == 'y':
+            outtmpl = f"{download_dir}/%(playlist)s/%(playlist_index)s - %(title)s.%(ext)s"
         else:
-            outtmpl = "%(playlist)s/%(title)s.%(ext)s"
+            outtmpl = f"{download_dir}/%(playlist)s/%(title)s.%(ext)s"
     else:
-        outtmpl = "%(title)s.%(ext)s"
+        outtmpl = f"{download_dir}/%(title)s.%(ext)s"
 
-    format_1 = f"bestvideo[ext='mp4'][height<={resolution}][fps<={fps}][protocol=https]+bestaudio[ext=m4a]"
-    format_2 = f"bestvideo[ext='mp4'][height<={resolution}][fps<={fps}][protocol=m3u8]+bestaudio[ext=m4a]"
-    format_3 = f"best"
+    # Generate formats dynamically
+    format_string = build_format(resolution, fps)
 
-    # Build options
     ydl_opts = {
-        'format': f"{format_1}/{format_2}/{format_3}",
+        'format': format_string,
         'merge_output_format': 'mp4',
         'outtmpl': outtmpl,
         'ignoreerrors': True,  # Skip videos with errors
-        }
+    }
 
     return ydl_opts
 
-def chdir():
-    home_dir = os.path.expanduser("~")
-    try:
-        if home_dir == '/data/data/com.termux/files/home':
-            download_dir = "/storage/emulated/0/Download/yt"
-        elif platform.system().lower() == 'linux':
-            download_dir = f"{home_dir}/Downloads/yt"
-        else:
-            raise OSError(f"Unsupported platform: {platform.system()}")
-    except Exception as e:
-        print(f"Error changing directory: {e}")
-        exit()
+def get_download_dir():
+    home_dir = Path.home()
 
-    os.makedirs(download_dir, exist_ok=True)
-    os.chdir(download_dir)
-    print(f"Changed directory to {download_dir}")
+    # Handle Termux-specific path
+    if home_dir == '/data/data/com.termux/files/home':
+        download_dir = Path("/storage/emulated/0/Download/yt")
+
+    # Handle Unix-like systems and root home directory
+    elif home_dir.parts[1] in ('home', 'root'):
+        download_dir = home_dir / 'Downloads' / 'yt'
+
+    else:
+        raise OSError(f"Unsupported platform. This only works in Android (with Termux) or Unix-like systems")
+
+    # Ensure the directory exists
+    download_dir.mkdir(parents=True, exist_ok=True)
+    return download_dir
+
+
+def get_valid_numbering():
+    numbering = input("Do you want numbering for the playlist? (y/N): ").lower() or 'n'
+    while numbering not in ['y', 'n']:
+        numbering = input("Error: Invalid option. Select from (y/N): ").lower() or 'n'
+    return numbering
+
+def build_format(resolution, fps):
+    protocols = ['https', 'm3u8']
+    video_fmt = f"bestvideo[ext='mp4'][height<={resolution}]"
+    audio_fmt = "bestaudio[ext=m4a]"
+    formats = []
+
+    for protocol in protocols:
+        protocol_fmt = f"[protocol={protocol}]"
+        for fps_condition in ['<=', '>=']:
+            formats.append(f"{video_fmt}[fps{fps_condition}{fps}]{protocol_fmt}+{audio_fmt}")
+
+    formats.append("best")  # Add the best quality fallback
+    return "/".join(formats)
 
 if __name__ == "__main__":
     main()
