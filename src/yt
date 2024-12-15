@@ -75,7 +75,7 @@ def get_download_dir():
     home_dir = Path.home()
 
     # Handle Termux-specific path
-    if home_dir == '/data/data/com.termux/files/home':
+    if str(home_dir) == '/data/data/com.termux/files/home':
         download_dir = Path("/storage/emulated/0/Download/yt")
 
     # Handle Unix-like systems and root home directory
