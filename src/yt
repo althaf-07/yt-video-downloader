@@ -15,15 +15,14 @@ def build_format(resolution, fps):
     return "/".join(formats)
 
 def get_valid_numbering():
-    numbering = input("Do you want numbering for the playlist? (y/N): ").lower() or "n"
-    while numbering not in ["y", "n"]:
-        numbering = input("Error: Invalid option. Select from (y/N): ").lower() or "n"
+    numbering = input("Do you want numbering for the playlist? (y/N): ").lower() or 'n'
+    while numbering not in ['y', 'n']:
+        numbering = input("Error: Invalid option. Select from (y/N): ").lower() or 'n'
     return numbering
 
 def get_output_template(url, download_dir):
     if "playlist" in url:
         numbering = get_valid_numbering()
-
         if numbering == "y":
             outtmpl = f"{download_dir}/%(playlist)s/%(playlist_index)s - %(title)s.%(ext)s"
         else:
@@ -54,18 +53,15 @@ def get_download_dir():
 def build_ydl_opts(url, resolution, fps):
     download_dir = get_download_dir()
     outtmpl = get_output_template(url, download_dir)
-    format_string = build_format(resolution, fps) # Generate formats dynamically
+    format_string = build_format(resolution, fps)
 
     ydl_opts = {
         "outtmpl": outtmpl,
-        "ignoreerrors": True, # Skip videos with errors
         "writethumbnail": True,
         "format": format_string,
         "merge_output_format": "mp4",
-        "postprocessors": [
-            {"key": "FFmpegMetadata"},
-            {"key": "EmbedThumbnail"}
-        ]
+        "download_archive": str(download_dir / "archive.txt"),
+        "postprocessors": [{"key": "EmbedThumbnail"}]
     }
 
     return ydl_opts
