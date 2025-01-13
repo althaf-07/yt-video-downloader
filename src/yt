@@ -8,11 +8,11 @@ def build_format(resolution, fps):
     audio_fmt = "bestaudio[ext=m4a]"
     formats = []
 
-    for fps_condition in [">=", "<="]:
-        formats.append(f"{video_fmt}[fps{fps_condition}{fps}]+{audio_fmt}")
+    for fps_condition in ['>=', '<=']:
+        formats.append(f'{video_fmt}[fps{fps_condition}{fps}]+{audio_fmt}')
 
     formats.append("bestvideo[ext=mp4]+bestvideo[ext=m4a]") # Add the best quality fallback
-    return "/".join(formats)
+    return '/'.join(formats)
 
 def get_valid_numbering():
     numbering = input("Do you want numbering for the playlist? (y/N): ").lower() or 'n'
@@ -21,9 +21,9 @@ def get_valid_numbering():
     return numbering
 
 def get_output_template(url, download_dir):
-    if "playlist" in url:
+    if 'playlist' in url:
         numbering = get_valid_numbering()
-        if numbering == "y":
+        if numbering == 'y':
             outtmpl = f"{download_dir}/%(playlist)s/%(playlist_index)s - %(title)s.%(ext)s"
         else:
             outtmpl = f"{download_dir}/%(playlist)s/%(title)s.%(ext)s"
@@ -36,12 +36,12 @@ def get_download_dir():
     home_dir = Path.home()
 
     # Handle Termux-specific path
-    if str(home_dir) == "/data/data/com.termux/files/home":
-        download_dir = Path("/storage/emulated/0/Download/yt")
+    if str(home_dir) == '/data/data/com.termux/files/home':
+        download_dir = Path('/storage/emulated/0/Download/yt')
 
     # Handle Unix-like systems and root home directory
-    elif home_dir.parts[1] in ("home", "root"):
-        download_dir = home_dir / "Downloads" / "yt"
+    elif home_dir.parts[1] in ('home', 'root'):
+        download_dir = home_dir / 'Downloads' / 'yt'
 
     else:
         raise OSError(f"Unsupported platform. This only works in Android (with Termux) or Unix-like systems")
@@ -56,33 +56,33 @@ def build_ydl_opts(url, resolution, fps):
     format_string = build_format(resolution, fps)
 
     ydl_opts = {
-        "outtmpl": outtmpl,
-        "writethumbnail": True,
-        "format": format_string,
-        "merge_output_format": "mp4",
-        "download_archive": str(download_dir / "archive.txt"),
-        "postprocessors": [{"key": "EmbedThumbnail"}]
+        'outtmpl': outtmpl,
+        'writethumbnail': True,
+        'format': format_string,
+        'merge_output_format': 'mp4',
+        'download_archive': str(download_dir / 'archive.txt'),
+        'postprocessors': [{'key': 'EmbedThumbnail'}]
     }
 
     return ydl_opts
 
 def get_valid_fps():
-    multiple_fps = ["15", "30", "60"]
-    fps = input(f"Select an FPS from {multiple_fps} (default: 30): ") or "30"
+    multiple_fps = ['15', '30', '60']
+    fps = input(f"Select an FPS from {multiple_fps} (default: 30): ") or '30'
     while fps not in multiple_fps:
-        fps = input(f"Error: Invalid FPS. Select from {multiple_fps} (default: 30): ") or "30"
+        fps = input(f"Error: Invalid FPS. Select from {multiple_fps} (default: 30): ") or '30'
     return int(fps)
 
 def get_valid_resolution():
-    resolutions = ["144", "240", "360", "480", "720", "1080", "1440", "2160"]
-    resolution = input(f"Select a resolution from {resolutions} (default: 360): ") or "360"
+    resolutions = ['144', '240', '360', '480', '720', '1080', '1440', '2160']
+    resolution = input(f"Select a resolution from {resolutions} (default: 360): ") or '360'
     while resolution not in resolutions:
-        resolution = input(f"Error: Invalid resolution. Select from {resolutions} (default: 360): ") or "360"
+        resolution = input(f"Error: Invalid resolution. Select from {resolutions} (default: 360): ") or '360'
     return int(resolution)
 
 def is_youtube_link(url):
     parsed_url = urlparse(url)
-    return parsed_url.netloc in ["www.youtube.com", "youtube.com", "youtu.be"]
+    return parsed_url.netloc in ['www.youtube.com', 'youtube.com', 'youtu.be']
 
 def get_valid_url():
     url = input("Enter a video or playlist URL: ").strip()
@@ -109,5 +109,5 @@ def main():
     except Exception as e:
         print(f"An error occurred: {e}")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
