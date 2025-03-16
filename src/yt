@@ -1,38 +1,24 @@
-#!/usr/bin/env python3
+import subprocess
+import sys
 from pathlib import Path
 from urllib.parse import urlparse
-from yt_dlp import YoutubeDL
-
-
-def build_format(resolution, fps):
-    video_fmt = f"bestvideo[ext=mp4][protocol=https][height<={resolution}]"
-    audio_fmt = "bestaudio[ext=m4a]"
-    formats = []
-
-    for fps_condition in [">=", "<="]:
-        formats.append(f"{video_fmt}[fps{fps_condition}{fps}]+{audio_fmt}")
-
-    # Add the best quality fallback
-    formats.append("bestvideo[ext=mp4]+bestvideo[ext=m4a]")
-    return "/".join(formats)
 
 
 def get_valid_numbering():
-    numbering = (
-        input("Do you want numbering for the playlist? (y/N): ").lower() or "n"
-    )
-    while numbering not in ["y", "n"]:
-        numbering = (
-            input("Error: Invalid option. Select from (y/N): ").lower() or "n"
-        )
-    return numbering
+    numbering = input("Do you want numbering for the playlist? (y/N): ").lower() or "n"
+    while True:
+        if numbering in ["y", "n"]:
+            return numbering
+        print("Error: Invalid option. Try again.")
 
 
 def get_output_template(url, download_dir):
     if "playlist" in url:
         numbering = get_valid_numbering()
         if numbering == "y":
-            outtmpl = f"{download_dir}/%(playlist)s/%(playlist_index)s - %(title)s.%(ext)s"
+            outtmpl = (
+                f"{download_dir}/%(playlist)s/%(playlist_index)s - %(title)s.%(ext)s"
+            )
         else:
             outtmpl = f"{download_dir}/%(playlist)s/%(title)s.%(ext)s"
     else:
@@ -62,50 +48,33 @@ def get_download_dir():
     return download_dir
 
 
-def build_ydl_opts(url, resolution, fps):
-    download_dir = get_download_dir()
-    outtmpl = get_output_template(url, download_dir)
-    format_string = build_format(resolution, fps)
-
-    ydl_opts = {
-        "outtmpl": outtmpl,
-        "writethumbnail": True,
-        "format": format_string,
-        "merge_output_format": "mp4",
-        "download_archive": str(download_dir / "archive.txt"),
-        "postprocessors": [{"key": "EmbedThumbnail"}],
-    }
-
-    return ydl_opts
-
-
 def get_valid_fps():
-    multiple_fps = ["15", "30", "60"]
-    fps = input(f"Select an FPS from {multiple_fps} (default: 30): ") or "30"
-    while fps not in multiple_fps:
-        fps = (
-            input(
-                f"Error: Invalid FPS. Select from {multiple_fps} (default: 30): "
-            )
-            or "30"
-        )
-    return int(fps)
+    multiple_fps = ["30", "60"]
+    try:
+        while True:
+            fps = input(f"Select an FPS from {multiple_fps} (default: 30): ") or "30"
+            if fps in multiple_fps:
+                return int(fps)
+            print("Error: Invalid FPS. Try again.")
+    except KeyboardInterrupt:
+        print("\nOperation canceled by user.")
+        sys.exit(1)
 
 
 def get_valid_resolution():
     resolutions = ["144", "240", "360", "480", "720", "1080", "1440", "2160"]
-    resolution = (
-        input(f"Select a resolution from {resolutions} (default: 360): ")
-        or "360"
-    )
-    while resolution not in resolutions:
-        resolution = (
-            input(
-                f"Error: Invalid resolution. Select from {resolutions} (default: 360): "
+    try:
+        while True:
+            resolution = (
+                input(f"Select a resolution from {resolutions} (default: 360): ")
+                or "360"
             )
-            or "360"
-        )
-    return int(resolution)
+            if resolution in resolutions:
+                return int(resolution)
+            print("Error: Invalid resolution. Try again.")
+    except KeyboardInterrupt:
+        print("\nOperation canceled by user.")
+        sys.exit(1)
 
 
 def is_youtube_link(url):
@@ -114,10 +83,15 @@ def is_youtube_link(url):
 
 
 def get_valid_url():
-    url = input("Enter a video or playlist URL: ").strip()
-    while not is_youtube_link(url):
-        url = input("Error: Invalid URL. Provide a valid URL: ").strip()
-    return url
+    try:
+        while True:
+            url = input("Enter a video or playlist URL: ").strip()
+            if is_youtube_link(url):
+                return url
+            print("Error: Invalid URL. Try again.")
+    except KeyboardInterrupt:
+        print("\nOperation canceled by user.")
+        sys.exit(1)
 
 
 def main():
@@ -127,18 +101,37 @@ def main():
         resolution = get_valid_resolution()
         fps = get_valid_fps()
 
-        # Determine whether the link is a video or a playlist and build options
-        ydl_opts = build_ydl_opts(url, resolution, fps)
-
-        # Download using yt-dlp
-        with YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+        download_dir = get_download_dir()
+        outtmpl = get_output_template(url, download_dir)
+        format_string = (
+            f"bestvideo[ext=mp4][protocol=https][height>={resolution}][fps>={fps}]+bestaudio[ext=m4a]/"
+            f"bestvideo[ext=mp4][protocol=https][height>={resolution}][fps<={fps}]+bestaudio[ext=m4a]/"
+            f"bestvideo[ext=mp4][protocol=https][height<={resolution}][fps>={fps}]+bestaudio[ext=m4a]/"
+            f"bestvideo[ext=mp4][protocol=https][height<={resolution}][fps<={fps}]+bestaudio[ext=m4a]/"
+            f"bestvideo[ext=mp4][protocolo=https]+bestaudio[ext=m4a]/"
+            f"bestvideo[ext=mp4]+bestaudio[ext=m4a]/"
+            f"bestvideo+bestaudio"
+        )
+        command = [
+            "yt-dlp",
+            "--output",
+            outtmpl,
+            "--download-archive",
+            str(download_dir / "archive.txt"),
+            "--format",
+            format_string,
+            "--embed-thumbnail",
+        ]
+        print(command)
+        subprocess.run(command, check=True)
 
     except KeyboardInterrupt:
         print("\nOperation cancelled by user.")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"\nAn error occurred: {e}")
 
 
 if __name__ == "__main__":
     main()
+    # This is an option from previous command. Don't know whether it's useful or not
+    # "merge_output_format": "mp4"
