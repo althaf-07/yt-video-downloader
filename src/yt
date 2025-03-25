@@ -104,13 +104,7 @@ def main():
         download_dir = get_download_dir()
         outtmpl = get_output_template(url, download_dir)
         format_string = (
-            f"bestvideo[ext=mp4][protocol=https][height>={resolution}][fps>={fps}]+bestaudio[ext=m4a]/"
-            f"bestvideo[ext=mp4][protocol=https][height>={resolution}][fps<={fps}]+bestaudio[ext=m4a]/"
-            f"bestvideo[ext=mp4][protocol=https][height<={resolution}][fps>={fps}]+bestaudio[ext=m4a]/"
-            f"bestvideo[ext=mp4][protocol=https][height<={resolution}][fps<={fps}]+bestaudio[ext=m4a]/"
-            f"bestvideo[ext=mp4][protocolo=https]+bestaudio[ext=m4a]/"
-            f"bestvideo[ext=mp4]+bestaudio[ext=m4a]/"
-            f"bestvideo+bestaudio"
+            f"bestvideo[ext=mp4][protocol=https][height={resolution}][fps={fps}]+bestaudio[ext=m4a]/"
         )
         command = [
             "yt-dlp",
@@ -121,6 +115,7 @@ def main():
             "--format",
             format_string,
             "--embed-thumbnail",
+            url
         ]
         print(command)
         subprocess.run(command, check=True)
